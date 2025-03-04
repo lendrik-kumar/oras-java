@@ -32,6 +32,12 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import land.oras.auth.AuthProvider;
 import land.oras.auth.BearerTokenProvider;
 import land.oras.auth.FileStoreAuthenticationProvider;
@@ -43,10 +49,6 @@ import land.oras.utils.Const;
 import land.oras.utils.JsonUtils;
 import land.oras.utils.OrasHttpClient;
 import land.oras.utils.SupportedAlgorithm;
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A registry is the main entry point for interacting with a container registry
@@ -257,6 +259,33 @@ public final class Registry {
             logResponse(response);
         }
         handleError(response);
+    }
+
+/**
+     * Mount a blob from another repository
+     * @param containerRef The container reference
+     * @param digest The digest of the blob to mount
+     * @param from The source repository
+     * @return The response from the registry
+     */
+    public OrasHttpClient.ResponseWrapper<String> mountBlob(ContainerRef containerRef, String digest, String from) {
+        String mountUrl = String.format(
+            "%s://%s/v2/%s/blobs/uploads/?mount=%s&from=%s",
+            getScheme(),
+            containerRef.getRegistry(),
+            containerRef.getRepository(),
+            digest,
+            from
+        );
+
+        URI uri = URI.create(mountUrl);
+        OrasHttpClient.ResponseWrapper<String> response = client.post(uri, new byte[0], Map.of());
+
+        if (response.statusCode() != 201) {
+            throw new OrasException("Failed to mount blob: " + response.response());
+        }
+
+        return response;
     }
 
     /**
